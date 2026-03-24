@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X 키워드 모니터</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root {
+    --bg: #0a0a0a; --surface: #161616; --surface2: #1e1e1e;
+    --border: #2a2a2a; --text: #e8e8e8; --text2: #888;
+    --accent: #1d9bf0; --accent2: #1a8cd8;
+    --green: #00ba7c; --red: #f4212e; --orange: #ff7a00;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── 설정 모달 ── */
+  .setup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 420px; }
+  .setup-card h2 { margin-bottom: 8px; font-size: 20px; }
+  .setup-card p { color: var(--text2); font-size: 14px; margin-bottom: 20px; }
+  .setup-card label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 4px; margin-top: 12px; }
+  .setup-card input { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; }
+  .setup-card input:focus { border-color: var(--accent); }
+  .setup-card button { width: 100%; margin-top: 20px; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: 9999px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .setup-card button:hover { background: var(--accent2); }
+
+  /* ── 헤더 ── */
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border); }
+  .header h1 { font-size: 20px; display: flex; align-items: center; gap: 8px; }
+  .header h1 span { font-size: 24px; }
+  .header-actions { display: flex; gap: 8px; }
+  .btn-sm { padding: 6px 16px; border-radius: 9999px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; }
+  .btn-sm:hover { background: var(--surface2); }
+
+  /* ── 메인 레이아웃 ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+  /* ── 탭 ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; flex-wrap: wrap; }
+  .tab { padding: 8px 18px; border-radius: 9999px; font-size: 14px; font-weight: 500; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; transition: all .15s; }
+  .tab.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+  /* ── 통계 카드 ── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .stat-card .label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .stat-card .value { font-size: 24px; font-weight: 700; }
+  .stat-card .sub { font-size: 12px; color: var(--green); margin-top: 2px; }
+
+  /* ── 차트 ── */
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+  .chart-wrap h3 { font-size: 15px; margin-bottom: 12px; }
+
+  /* ── 정렬 ── */
+  .sort-bar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .sort-bar span { font-size: 13px; color: var(--text2); }
+  .sort-btn { padding: 5px 14px; border-radius: 9999px; font-size: 12px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; }
+  .sort-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── 트윗 목록 ── */
+  .tweet-list { display: flex; flex-direction: column; gap: 1px; }
+  .tweet { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; cursor: pointer; transition: background .15s; }
+  .tweet:hover { background: var(--surface2); }
+  .tweet-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .tweet-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--surface2); }
+  .tweet-author { flex: 1; }
+  .tweet-author .name { font-weight: 700; font-size: 14px; }
+  .tweet-author .handle { color: var(--text2); font-size: 13px; }
+  .tweet-text { font-size: 15px; line-height: 1.5; margin-bottom: 10px; white-space: pre-wrap; word-break: break-word; }
+  .tweet-metrics { display: flex; gap: 20px; font-size: 13px; color: var(--text2); }
+  .tweet-metrics span { display: flex; align-items: center; gap: 4px; }
+  .tweet-time { font-size: 12px; color: var(--text2); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+  .empty-state p { font-size: 15px; }
+
+  .loading { text-align: center; padding: 40px; color: var(--text2); }
+</style>
+</head>
+<body>
+
+<!-- ── 설정 모달 ── -->
+<div class="setup-overlay" id="setupModal">
+  <div class="setup-card">
+    <h2>Supabase 연결</h2>
+    <p>대시보드에서 데이터를 불러오려면 Supabase 프로젝트 정보를 입력하세요. 이 정보는 브라우저에 저장됩니다.</p>
+    <label>Supabase URL</label>
+    <input type="text" id="inputUrl" placeholder="https://xxxxxxx.supabase.co">
+    <label>Supabase Anon Key</label>
+    <input type="text" id="inputKey" placeholder="eyJhbGci...">
+    <button onclick="saveConfig()">연결하기</button>
+  </div>
+</div>
+
+<!-- ── 헤더 ── -->
+<div class="header">
+  <h1><span>𝕏</span> 키워드 모니터</h1>
+  <div class="header-actions">
+    <button class="btn-sm" onclick="loadData()">↻ 새로고침</button>
+    <button class="btn-sm" onclick="showSetup()">⚙ 설정</button>
+  </div>
+</div>
+
+<!-- ── 메인 ── -->
+<div class="container">
+  <div class="tabs" id="tabs"></div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="chart-wrap">
+    <h3>시간대별 트윗 수 (최근 7일)</h3>
+    <canvas id="trendChart" height="80"></canvas>
+  </div>
+
+  <div class="sort-bar">
+    <span>정렬:</span>
+    <button class="sort-btn active" data-sort="latest" onclick="setSort('latest')">최신순</button>
+    <button class="sort-btn" data-sort="likes" onclick="setSort('likes')">좋아요순</button>
+    <button class="sort-btn" data-sort="retweets" onclick="setSort('retweets')">리트윗순</button>
+    <button class="sort-btn" data-sort="impressions" onclick="setSort('impressions')">노출순</button>
+  </div>
+
+  <div class="tweet-list" id="tweetList">
+    <div class="loading">데이터 로드 중...</div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// 상태
+// ════════════════════════════════════════
+let sb = null;
+let allTweets = [];
+let keywords = [];
+let activeKeyword = "전체";
+let currentSort = "latest";
+let chart = null;
+
+// ════════════════════════════════════════
+// Supabase 연결
+// ════════════════════════════════════════
+function initSupabase(url, key) {
+  sb = supabase.createClient(url, key);
+}
+
+function saveConfig() {
+  const url = document.getElementById("inputUrl").value.trim();
+  const key = document.getElementById("inputKey").value.trim();
+  if (!url || !key) return alert("URL과 Key를 모두 입력해주세요.");
+  localStorage.setItem("sb_url", url);
+  localStorage.setItem("sb_key", key);
+  initSupabase(url, key);
+  document.getElementById("setupModal").style.display = "none";
+  loadData();
+}
+
+function showSetup() {
+  document.getElementById("setupModal").style.display = "flex";
+}
+
+// ════════════════════════════════════════
+// 데이터 로드
+// ════════════════════════════════════════
+async function loadData() {
+  if (!sb) return;
+
+  // 키워드 로드
+  const { data: kwData } = await sb.from("keywords").select("*").eq("is_active", true).order("created_at");
+  keywords = kwData ? kwData.map(k => k.keyword) : [];
+  renderTabs();
+
+  // 트윗 로드
+  let query = sb.from("tweets").select("*").order("created_at", { ascending: false }).limit(500);
+  if (activeKeyword !== "전체") {
+    query = query.eq("keyword", activeKeyword);
+  }
+  const { data: tweetData } = await query;
+  allTweets = tweetData || [];
+
+  renderStats();
+  renderChart();
+  renderTweets();
+}
+
+// ════════════════════════════════════════
+// 탭
+// ════════════════════════════════════════
+function renderTabs() {
+  const tabs = document.getElementById("tabs");
+  const all = ["전체", ...keywords];
+  tabs.innerHTML = all.map(k =>
+    `<button class="tab ${k === activeKeyword ? 'active' : ''}" onclick="switchTab('${k}')">${k}</button>`
+  ).join("");
+}
+
+function switchTab(kw) {
+  activeKeyword = kw;
+  loadData();
+}
+
+// ════════════════════════════════════════
+// 통계 카드
+// ════════════════════════════════════════
+function renderStats() {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const todayCount = allTweets.filter(t => t.created_at >= todayStart).length;
+  const totalLikes = allTweets.reduce((s, t) => s + (t.like_count || 0), 0);
+  const totalRTs = allTweets.reduce((s, t) => s + (t.retweet_count || 0), 0);
+  const totalImps = allTweets.reduce((s, t) => s + (t.impression_count || 0), 0);
+
+  document.getElementById("stats").innerHTML = `
+    <div class="stat-card"><div class="label">총 트윗</div><div class="value">${allTweets.length.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">오늘 수집</div><div class="value">${todayCount.toLocaleString()}</div><div class="sub">today</div></div>
+    <div class="stat-card"><div class="label">총 좋아요</div><div class="value">${totalLikes.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">총 리트윗</div><div class="value">${totalRTs.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">총 노출</div><div class="value">${totalImps.toLocaleString()}</div></div>
+  `;
+}
+
+// ════════════════════════════════════════
+// 차트 (6시간 단위, 최근 7일)
+// ════════════════════════════════════════
+function renderChart() {
+  const now = new Date();
+  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const buckets = {};
+
+  // 6시간 단위 버킷 생성
+  for (let d = new Date(weekAgo); d <= now; d = new Date(d.getTime() + 6 * 3600000)) {
+    const label = d.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) +
+      " " + d.getHours().toString().padStart(2, "0") + "시";
+    buckets[label] = 0;
+  }
+
+  const labels = Object.keys(buckets);
+
+  allTweets.forEach(t => {
+    const td = new Date(t.created_at);
+    if (td < weekAgo) return;
+    // 가장 가까운 버킷 찾기
+    const diff = td - weekAgo;
+    const idx = Math.min(Math.floor(diff / (6 * 3600000)), labels.length - 1);
+    if (idx >= 0) buckets[labels[idx]]++;
+  });
+
+  const data = labels.map(l => buckets[l]);
+
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById("trendChart"), {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: "rgba(29,155,240,0.6)",
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: "#888", font: { size: 10 }, maxRotation: 45 }, grid: { display: false } },
+        y: { ticks: { color: "#888" }, grid: { color: "#222" }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════
+// 정렬
+// ════════════════════════════════════════
+function setSort(sort) {
+  currentSort = sort;
+  document.querySelectorAll(".sort-btn").forEach(b => b.classList.toggle("active", b.dataset.sort === sort));
+  renderTweets();
+}
+
+function getSorted() {
+  const arr = [...allTweets];
+  switch (currentSort) {
+    case "likes": return arr.sort((a, b) => (b.like_count || 0) - (a.like_count || 0));
+    case "retweets": return arr.sort((a, b) => (b.retweet_count || 0) - (a.retweet_count || 0));
+    case "impressions": return arr.sort((a, b) => (b.impression_count || 0) - (a.impression_count || 0));
+    default: return arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+}
+
+// ════════════════════════════════════════
+// 트윗 렌더링
+// ════════════════════════════════════════
+function renderTweets() {
+  const list = document.getElementById("tweetList");
+  const sorted = getSorted();
+
+  if (!sorted.length) {
+    list.innerHTML = `<div class="empty-state"><p>수집된 트윗이 없습니다.<br>collect_tweets.py를 먼저 실행해주세요.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = sorted.map(t => {
+    const date = new Date(t.created_at);
+    const timeStr = date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) +
+      " " + date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    const url = `https://x.com/${t.author_username}/status/${t.tweet_id}`;
+    const avatar = t.author_profile_image || "";
+
+    return `
+      <div class="tweet" onclick="window.open('${url}', '_blank')">
+        <div class="tweet-header">
+          ${avatar ? `<img class="tweet-avatar" src="${avatar}" alt="">` : `<div class="tweet-avatar"></div>`}
+          <div class="tweet-author">
+            <div class="name">${escHtml(t.author_name || "")}</div>
+            <div class="handle">@${escHtml(t.author_username || "")} · ${timeStr}</div>
+          </div>
+        </div>
+        <div class="tweet-text">${escHtml(t.text || "")}</div>
+        <div class="tweet-metrics">
+          <span>♡ ${(t.like_count || 0).toLocaleString()}</span>
+          <span>↻ ${(t.retweet_count || 0).toLocaleString()}</span>
+          <span>💬 ${(t.reply_count || 0).toLocaleString()}</span>
+          <span>👁 ${(t.impression_count || 0).toLocaleString()}</span>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function escHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ════════════════════════════════════════
+// 초기화
+// ════════════════════════════════════════
+(function init() {
+  const url = localStorage.getItem("sb_url");
+  const key = localStorage.getItem("sb_key");
+  if (url && key) {
+    initSupabase(url, key);
+    document.getElementById("setupModal").style.display = "none";
+    loadData();
+  }
+})();
+</script>
+</body>
+</html>
