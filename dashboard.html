@@ -75,6 +75,16 @@
   .tweet-metrics span { display: flex; align-items: center; gap: 4px; }
   .tweet-time { font-size: 12px; color: var(--text2); }
 
+  /* ── 인기 트윗 TOP 5 ── */
+  .top5-section { margin-bottom: 24px; }
+  .top5-section h3 { font-size: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .top5-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+  .top5-card { min-width: 280px; max-width: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; cursor: pointer; transition: background .15s; flex-shrink: 0; position: relative; }
+  .top5-card:hover { background: var(--surface2); }
+  .top5-rank { position: absolute; top: 12px; right: 12px; background: var(--accent); color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .top5-card .tweet-text { font-size: 14px; line-height: 1.4; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .top5-card .tweet-metrics { font-size: 12px; }
+
   .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
   .empty-state p { font-size: 15px; }
 
@@ -108,6 +118,8 @@
 <!-- ── 메인 ── -->
 <div class="container">
   <div class="tabs" id="tabs"></div>
+
+  <div class="top5-section" id="top5Section"></div>
 
   <div class="stats" id="stats"></div>
 
@@ -181,6 +193,7 @@ async function loadData() {
   const { data: tweetData } = await query;
   allTweets = tweetData || [];
 
+  renderTop5();
   renderStats();
   renderChart();
   renderTweets();
@@ -200,6 +213,53 @@ function renderTabs() {
 function switchTab(kw) {
   activeKeyword = kw;
   loadData();
+}
+
+// ════════════════════════════════════════
+// 이번 주 인기 트윗 TOP 5
+// ════════════════════════════════════════
+function renderTop5() {
+  const section = document.getElementById("top5Section");
+  const now = new Date();
+  const day = now.getDay();
+  const mondayOffset = day === 0 ? 6 : day - 1;
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const weekTweets = allTweets.filter(t => new Date(t.created_at) >= weekStart);
+  const top5 = [...weekTweets].sort((a, b) => (b.retweet_count || 0) - (a.retweet_count || 0)).slice(0, 5);
+
+  if (!top5.length) {
+    section.innerHTML = "";
+    return;
+  }
+
+  section.innerHTML = `
+    <h3>🔥 이번 주 인기 트윗 TOP 5</h3>
+    <div class="top5-list">
+      ${top5.map((t, i) => {
+        const date = new Date(t.created_at);
+        const timeStr = date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+        const url = "https://x.com/" + t.author_username + "/status/" + t.tweet_id;
+        const avatar = t.author_profile_image || "";
+        return '<div class="top5-card" onclick="window.open(\'' + url + '\', \'_blank\')">' +
+          '<div class="top5-rank">' + (i + 1) + '</div>' +
+          '<div class="tweet-header">' +
+            (avatar ? '<img class="tweet-avatar" src="' + avatar + '" alt="" style="width:32px;height:32px;">' : '<div class="tweet-avatar" style="width:32px;height:32px;"></div>') +
+            '<div class="tweet-author">' +
+              '<div class="name">' + escHtml(t.author_name || "") + '</div>' +
+              '<div class="handle">@' + escHtml(t.author_username || "") + ' · ' + timeStr + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="tweet-text">' + escHtml(t.text || "") + '</div>' +
+          '<div class="tweet-metrics">' +
+            '<span>♡ ' + (t.like_count || 0).toLocaleString() + '</span>' +
+            '<span>↻ ' + (t.retweet_count || 0).toLocaleString() + '</span>' +
+            '<span>👁 ' + (t.impression_count || 0).toLocaleString() + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join("")}
+    </div>`;
 }
 
 // ════════════════════════════════════════
