@@ -30,7 +30,7 @@ echo "✅ 패키지 설치 완료"
 echo ""
 echo "📥 최신 코드를 다운로드합니다..."
 REPO_URL="https://raw.githubusercontent.com/nicehan23/x-keyword-monitor/main"
-for file in collect_tweets.py generate_and_post.py tweet_templates.py fetch_engagement.py tweet-dashboard.html; do
+for file in collect_tweets.py generate_and_post.py tweet_templates.py fetch_engagement.py tweet-dashboard.html config.js.example setup_all_tables.sql; do
     echo "   다운로드: $file"
     curl -sL "$REPO_URL/$file" -o "$INSTALL_DIR/$file"
 done
@@ -49,15 +49,25 @@ if [ "$SKIP_ENV" != "true" ]; then
     echo "  🔑 API 키 설정"
     echo "=================================================="
     echo ""
-    echo "X Developer Portal에서 발급받은 키를 입력해주세요."
+    echo "📌 사전 준비가 필요합니다:"
+    echo "   1. X Developer Portal (https://developer.x.com) — API 키 발급"
+    echo "   2. Anthropic Console (https://console.anthropic.com) — Claude API 키"
+    echo "   3. Supabase (https://supabase.com) — 프로젝트 생성 후 URL + anon key"
     echo ""
+    echo "── X API ──"
     read -p "X_BEARER_TOKEN: " X_BEARER_TOKEN
     read -p "X_API_KEY (Consumer Key): " X_API_KEY
     read -p "X_API_SECRET (Consumer Secret): " X_API_SECRET
     read -p "X_ACCESS_TOKEN: " X_ACCESS_TOKEN
     read -p "X_ACCESS_TOKEN_SECRET: " X_ACCESS_TOKEN_SECRET
     echo ""
-    read -p "ANTHROPIC_API_KEY (Claude API): " ANTHROPIC_API_KEY
+    echo "── Claude API ──"
+    read -p "ANTHROPIC_API_KEY: " ANTHROPIC_API_KEY
+    echo ""
+    echo "── Supabase ──"
+    echo "(Supabase 대시보드 → Settings → API 에서 확인)"
+    read -p "SUPABASE_URL: " SUPABASE_URL
+    read -p "SUPABASE_KEY (anon public): " SUPABASE_KEY
     echo ""
     cat > "$INSTALL_DIR/.env" << ENVEOF
 X_BEARER_TOKEN=$X_BEARER_TOKEN
@@ -66,10 +76,19 @@ X_API_SECRET=$X_API_SECRET
 X_ACCESS_TOKEN=$X_ACCESS_TOKEN
 X_ACCESS_TOKEN_SECRET=$X_ACCESS_TOKEN_SECRET
 ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
-SUPABASE_URL=https://nuauodpvylurlynlwcfy.supabase.co
-SUPABASE_KEY=sb_publishable_A-2qRZZRzB5p-ClUDGygzQ_KX6wAykW
+SUPABASE_URL=$SUPABASE_URL
+SUPABASE_KEY=$SUPABASE_KEY
 ENVEOF
     echo "✅ .env 파일 생성 완료"
+    echo ""
+    # 대시보드용 config.js도 자동 생성
+    cat > "$INSTALL_DIR/config.js" << CJSEOF
+const CONFIG = {
+  SUPABASE_URL: "$SUPABASE_URL",
+  SUPABASE_KEY: "$SUPABASE_KEY",
+};
+CJSEOF
+    echo "✅ config.js (대시보드 설정) 생성 완료"
 fi
 echo ""
 echo "🔧 Python 호환성 패치 적용 중..."
@@ -95,6 +114,20 @@ echo "0 20 * * * cd $INSTALL_DIR && $PYTHON_PATH generate_and_post.py >> cron.lo
 ) | crontab -
 echo "✅ 스케줄 등록 완료"
 echo ""
+echo "=================================================="
+echo "  ⚠️  Supabase 테이블 생성이 필요합니다!"
+echo "=================================================="
+echo ""
+echo "  1. Supabase 대시보드 접속 (https://supabase.com/dashboard)"
+echo "  2. SQL Editor 클릭"
+echo "  3. 아래 파일의 내용을 전체 복사 → 붙여넣기 → Run:"
+echo "     $INSTALL_DIR/setup_all_tables.sql"
+echo ""
+echo "  그 다음 키워드를 추가하세요:"
+echo "     cd $INSTALL_DIR && python3 collect_tweets.py add 공부법"
+echo ""
+echo "=================================================="
+echo ""
 echo "🧪 테스트 실행..."
 echo ""
 cd "$INSTALL_DIR"
@@ -105,6 +138,14 @@ echo "  ✅ 설치 완료!"
 echo "=================================================="
 echo ""
 echo "📊 대시보드: file://$INSTALL_DIR/tweet-dashboard.html"
-echo "📌 즉시 포스팅: cd $INSTALL_DIR && python3 generate_and_post.py"
-echo "📌 스케줄 확인: crontab -l"
+echo ""
+echo "📌 키워드 관리:"
+echo "   python3 collect_tweets.py add 수학공부    # 키워드 추가"
+echo "   python3 collect_tweets.py remove 수학공부 # 비활성화"
+echo "   python3 collect_tweets.py delete 수학공부 # 완전 삭제"
+echo "   python3 collect_tweets.py list           # 목록 보기"
+echo ""
+echo "📌 포스팅:"
+echo "   python3 generate_and_post.py --dry-run   # 테스트"
+echo "   python3 generate_and_post.py             # 즉시 포스팅"
 echo ""

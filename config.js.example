@@ -1,0 +1,6 @@
+// 대시보드 설정 — setup.sh가 자동으로 config.js를 생성합니다.
+// 수동 설치 시: 이 파일을 config.js로 복사 후 아래 값을 채워주세요.
+const CONFIG = {
+  SUPABASE_URL: "여기에_Supabase_URL_입력",
+  SUPABASE_KEY: "여기에_Supabase_Anon_Key_입력",
+};
