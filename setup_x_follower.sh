@@ -17,7 +17,7 @@ $PY -m pip install requests requests-oauthlib -q
 echo "  ✅ 패키지 설치 완료"
 echo ""
 echo "▶ [3/5] 봇 스크립트 생성 중..."
-curl -sO https://raw.githubusercontent.com/mlt318/x-keyword-monitor/main/like_tchinso.py
+curl -sO https://raw.githubusercontent.com/nicehan23/x-keyword-monitor/main/like_tchinso.py
 echo "  ✅ like_tchinso.py 다운로드 완료"
 echo ""
 if [ -f .env ]; then
