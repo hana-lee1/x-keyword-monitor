@@ -51,7 +51,6 @@ MAX_TWEETS_PER_DAY = 4
 TREND_LOOKBACK_DAYS = 7
 TREND_TOP_N = 20
 SIMILARITY_THRESHOLD = 0.7  # 중복 방지 임계값
-QANDA_MENTION_EVERY_N = 4   # N번째 트윗마다 콴다 자연스럽게 언급
 THREAD_MIN = 3              # 스레드 최소 답글 수
 THREAD_MAX = 5              # 스레드 최대 답글 수
 
@@ -474,10 +473,7 @@ def main(dry_run: bool = False):
         log.info(f"오늘 이미 {today_count}개 포스팅됨 (최대 {MAX_TWEETS_PER_DAY}개). 종료.")
         return
 
-    # 콴다 언급 여부 결정
-    total_count = get_total_post_count(supabase)
-    include_qanda = (total_count % QANDA_MENTION_EVERY_N == QANDA_MENTION_EVERY_N - 1)
-    log.info(f"콴다 언급: {'O' if include_qanda else 'X'} (전체 {total_count}번째 트윗)")
+    include_qanda = False  # 특정 앱 언급 안 함
 
     # Step 1: 트렌드 가져오기
     trending = fetch_trending_tweets(supabase)
