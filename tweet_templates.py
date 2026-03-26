@@ -4,9 +4,23 @@
 - 콴다 자연스러운 언급 조절
 """
 
+import random
+
+THREAD_HOOKS = [
+    "어떻게 하냐면... ⇣⇣",
+    "-천천히 자세하게 풀어볼게요-",
+    "타래로 하나씩 알려드릴게요",
+]
+
+
+def get_random_hook() -> str:
+    return random.choice(THREAD_HOOKS)
+
 
 def get_tweet_prompt(trends_text: str, previous_tweets_text: str, include_qanda: bool) -> str:
     """트윗 생성 프롬프트 반환"""
+
+    hook = get_random_hook()
 
     qanda_instruction = ""
     if include_qanda:
@@ -34,7 +48,7 @@ def get_tweet_prompt(trends_text: str, previous_tweets_text: str, include_qanda:
 
 [메인 트윗 작성 규칙]
 1. 공부법 주제를 흥미롭게 던지는 훅(hook) 역할
-2. 마지막에 반드시 "어떻게 하냐면... ⇣⇣" 을 붙여서 스레드로 유도
+2. 마지막에 반드시 "{hook}" 을 붙여서 스레드로 유도
 3. 한글 기준 100자 이내 (스레드 유도 문구 포함)
 4. 이모지 1~2개 활용 가능
 5. 해시태그 1~2개 포함 (#공부법 #수능 #시험 #공부팁 등에서 선택)
@@ -43,9 +57,9 @@ def get_tweet_prompt(trends_text: str, previous_tweets_text: str, include_qanda:
 {qanda_instruction}
 
 [좋은 메인 트윗 예시]
-- "시험 2주 전, 이 루틴만 따라하면 성적 오름 📈 어떻게 하냐면... ⇣⇣ #공부법"
-- "수학 틀린 문제 다시 봐도 이해 안 될 때 💡 어떻게 하냐면... ⇣⇣ #공부팁"
-- "집중력 5분도 안 가는 사람? 이 방법 써봐 어떻게 하냐면... ⇣⇣ #공부법"
+- "시험 2주 전, 이 루틴만 따라하면 성적 오름 📈 {hook} #공부법"
+- "수학 틀린 문제 다시 봐도 이해 안 될 때 💡 {hook} #공부팁"
+- "집중력 5분도 안 가는 사람? 이 방법 써봐 {hook} #공부법"
 
 [출력]
 메인 트윗 본문만 출력하세요. 따옴표나 설명 없이 바로 트윗 텍스트만."""
