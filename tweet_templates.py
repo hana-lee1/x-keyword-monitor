@@ -12,16 +12,12 @@ import random
 # ──────────────────────────────────────────────
 # 메인 트윗 마지막에 붙는 훅 문구 (랜덤 선택)
 # ──────────────────────────────────────────────
-THREAD_HOOKS = [
-    "어떻게 하냐면... ⇣⇣",
-    "-천천히 자세하게 풀어볼게요-",
-    "타래로 하나씩 알려드릴게요",
-]
+THREAD_HOOK = "-천천히 자세하게 풀어볼게요⇣⇣"
 
 
 def get_random_hook() -> str:
     """스레드 유도 훅 문구를 랜덤으로 반환"""
-    return random.choice(THREAD_HOOKS)
+    return THREAD_HOOK
 
 
 def get_tweet_prompt(trends_text: str, previous_tweets_text: str, include_qanda: bool = False) -> str:
@@ -120,4 +116,3 @@ TWEET_CATEGORIES = [
     "멘탈 관리 / 동기부여",
     "AI 활용 공부법",
     "자기주도학습 팁",
-]
