@@ -1,63 +1,37 @@
-# 🚀 공부법 트윗 자동생성 시스템
+# 🔍 X 키워드 모니터
 
-> 트렌딩 트윗을 분석하여 공부법 관련 트윗(메인 + 스레드)을 자동 생성하고, X(트위터)에 자동 포스팅하는 시스템입니다.
+> X(트위터)에서 지정 키워드의 트윗을 자동 수집하고, 대시보드로 인기 트윗을 한눈에 확인하는 시스템입니다.
 
 ## ✨ 주요 기능
 
-- **트렌드 수집**: X에서 공부법 관련 인기 트윗 자동 크롤링 (매일 23:00)
-- **AI 트윗 생성**: Claude AI가 트렌드를 분석하여 메인 트윗 + 3~5개 스레드 자동 생성
-- **AI 품질 검수**: 포스팅 전 AI가 자동으로 품질 검토
-- **자동 포스팅**: 하루 4회 자동 포스팅 (08:00, 17:00, 18:00, 20:00 KST) — ⚠️ 2026-03-30부터 잠정 중단 (X API 토큰 절약)
-- **인게이지먼트 추적**: RT, 좋아요, 조회수 등 자동 수집 (매일 07:30)
-- **대시보드 2종**:
-  - 트윗 크롤러 대시보드: [dashboard.html](https://nicehan23.github.io/x-keyword-monitor/dashboard.html) — 수집된 트윗 목록, 최근 7일 RT 기준 Top 5, 키워드별 필터, 시간대별 차트
-  - 자동생성 대시보드: [tweet-dashboard.html](https://nicehan23.github.io/x-keyword-monitor/tweet-dashboard.html) — AI 생성 트윗 관리, 포스팅 상태, 인게이지먼트
+- **트윗 수집**: X에서 키워드별 인기 트윗 자동 크롤링 (매일 23:00)
+- **스레드 수집**: Top 5 인기 트윗의 답글 스레드 자동 수집
+- **대시보드**: [dashboard.html](https://hana-lee1.github.io/x-keyword-monitor/dashboard.html) — 수집된 트윗 목록, 최근 7일 RT 기준 Top 5, 키워드별 필터, 시간대별 차트
 
 ---
 
 ## 📋 사전 준비 (API 키 발급)
 
-### 1. X (Twitter) API 키
-
+### X (Twitter) API 키
 1. [X Developer Portal](https://developer.x.com/en/portal/dashboard) 접속
 2. **Projects & Apps** → **+ Create App**
-3. **User authentication settings** → **Set up**
-   - App permissions: **Read and Write** 선택
-   - Type of App: **Web App**
-   - Callback URL: `https://example.com`
-4. **Keys and tokens** 탭에서 복사:
-   - Bearer Token
-   - API Key (Consumer Key)
-   - API Secret (Consumer Secret)
-   - Access Token
-   - Access Token Secret
+3. **Keys and tokens** 탭에서 **Bearer Token** 복사
 
-> ⚠️ Access Token은 **Read and Write 권한 설정 후에** Regenerate 해야 합니다!
-
-### 2. Claude API 키
-
-1. [Anthropic Console](https://console.anthropic.com) 접속
-2. **API Keys** → **Create Key**
+### Supabase
+1. [Supabase](https://supabase.com) 프로젝트 생성
+2. `setup_all_tables.sql`을 SQL Editor에서 실행
+3. **Project URL**과 **anon key** 복사
 
 ---
 
-## 🔧 설치 방법 (3분 소요)
+## 🔧 설치 방법
 
-터미널(Terminal.app)을 열고 아래 **한 줄**을 붙여넣으세요:
 ```bash
-curl -sL https://raw.githubusercontent.com/nicehan23/x-keyword-monitor/main/setup.sh | bash
-```
-
-설치 중 API 키를 입력하라는 메시지가 나옵니다.
-
-### 수동 설치
-```bash
-git clone https://github.com/nicehan23/x-keyword-monitor.git
+git clone https://github.com/hana-lee1/x-keyword-monitor.git
 cd x-keyword-monitor
-pip3 install anthropic supabase python-dotenv tweepy requests --break-system-packages
+pip3 install -r requirements.txt --break-system-packages
 cp .env.example .env
-nano .env  # 키 입력 후 Ctrl+O → Enter → Ctrl+X
-python3 generate_and_post.py --dry-run
+nano .env  # X_BEARER_TOKEN, SUPABASE_URL, SUPABASE_KEY 입력
 ```
 
 ---
@@ -66,15 +40,15 @@ python3 generate_and_post.py --dry-run
 
 | 명령어 | 설명 |
 |:-------|:-----|
-| `python3 generate_and_post.py --dry-run` | 테스트 (포스팅 안 함) |
-| `python3 generate_and_post.py` | 즉시 포스팅 |
-| `python3 fetch_engagement.py` | 인게이지먼트 수동 업데이트 |
-| `crontab -l` | 스케줄 확인 |
+| `python3 collect_tweets.py` | 전체 키워드 수집 + Top 5 스레드 수집 |
+| `python3 collect_tweets.py add 공부팁` | 키워드 추가 |
+| `python3 collect_tweets.py remove 공부팁` | 키워드 비활성화 |
+| `python3 collect_tweets.py delete 공부팁` | 키워드 + 트윗 완전 삭제 |
+| `python3 collect_tweets.py list` | 키워드 목록 |
+| `python3 collect_tweets.py threads` | Top 5 스레드만 수집 |
 
 ### 대시보드
-
-- 크롤러 대시보드: [dashboard.html](https://nicehan23.github.io/x-keyword-monitor/dashboard.html) — 수집 트윗 & Top 5 (최근 7일 RT 기준)
-- 자동생성 대시보드: [tweet-dashboard.html](https://nicehan23.github.io/x-keyword-monitor/tweet-dashboard.html) — AI 생성 트윗 관리
+[https://hana-lee1.github.io/x-keyword-monitor/dashboard.html](https://hana-lee1.github.io/x-keyword-monitor/dashboard.html)
 
 ---
 
@@ -83,12 +57,6 @@ python3 generate_and_post.py --dry-run
 | 시간 | 작업 |
 |:----:|:-----|
 | 23:00 | 트윗 수집 (크롤링) |
-| 23:00 | 친소 자동 좋아요 (`like_tchinso.py`) |
-| 07:30 | 인게이지먼트 업데이트 |
-| 08:00 | ~~트윗 생성 + 포스팅~~ (잠정 중단) |
-| 17:00 | ~~트윗 생성 + 포스팅~~ (잠정 중단) |
-| 18:00 | ~~트윗 생성 + 포스팅~~ (잠정 중단) |
-| 20:00 | ~~트윗 생성 + 포스팅~~ (잠정 중단) |
 
 > 💡 Mac 잠자기 모드에서는 자동 실행 안 됨. **시스템 설정 → 에너지 → 네트워크 액세스를 위해 깨우기** 켜기
 
@@ -96,10 +64,8 @@ python3 generate_and_post.py --dry-run
 
 ## ❓ 문제 해결
 
-- **403 Forbidden** → X Developer Portal에서 Access Token Regenerate
-- **ModuleNotFoundError** → `pip3 install anthropic supabase python-dotenv tweepy requests --break-system-packages`
-- **TypeError: unsupported operand** → `sed -i '' '1s/^/from __future__ import annotations\n/' ~/x-keyword-monitor/generate_and_post.py`
-- **자동 포스팅 안 됨** → Mac 잠자기 확인 + `crontab -l`
+- **403 Forbidden / spend cap 도달** → X Developer Portal에서 Spend Cap 증액
+- **ModuleNotFoundError** → `pip3 install -r requirements.txt --break-system-packages`
 
 ---
 
@@ -107,13 +73,10 @@ python3 generate_and_post.py --dry-run
 ```
 x-keyword-monitor/
 ├── .env                    # API 키 (공유 금지!)
-├── .env.example            # API 키 템플릿
-├── setup.sh                # 원클릭 설치 스크립트
 ├── collect_tweets.py       # X 트윗 수집기
-├── generate_and_post.py    # 트윗 생성 + 포스팅
-├── tweet_templates.py      # AI 프롬프트 템플릿
-├── fetch_engagement.py     # 인게이지먼트 수집기
-├── dashboard.html          # 크롤러 대시보드 (수집 트윗, Top 5)
-├── tweet-dashboard.html    # 자동생성 대시보드 (AI 트윗, 포스팅)
+├── dashboard.html          # 대시보드 (수집 트윗, Top 5)
+├── setup_all_tables.sql    # Supabase 테이블 스키마
+├── setup.sh                # 설치 스크립트
+├── requirements.txt        # Python 의존성
 └── cron.log                # 실행 로그
 ```
